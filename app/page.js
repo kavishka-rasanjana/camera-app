@@ -2,85 +2,79 @@
 import { useState } from "react";
 
 export default function Home() {
-  const [image, setImage] = useState(null);
+  const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [progress, setProgress] = useState(0);
 
-  // Photo eka select karama (hari camera eken gaththama) preview karanna
-  const handleImageChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setImage(e.target.files[0]);
+  // Function triggered when files are selected (allows both camera and gallery)
+  const handleFileChange = (e) => {
+    if (e.target.files) {
+      setFiles(Array.from(e.target.files));
     }
   };
 
-  // Backend ekata photo eka upload karanna
-  const uploadToDrive = async () => {
-    if (!image) return;
+  // Function triggered when the Upload button is clicked
+  const handleUpload = async () => {
+    if (files.length === 0) return;
     setUploading(true);
-    setMessage("Uploading to Drive...");
+    let successCount = 0;
 
-    const formData = new FormData();
-    formData.append("file", image);
+    // Upload photos one by one to avoid Vercel's 4.5MB payload limit
+    for (let i = 0; i < files.length; i++) {
+      const formData = new FormData();
+      formData.append("file", files[i]);
 
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (res.ok) {
-        setMessage("✅ Photo eka Drive ekata Save wuna!");
-        setImage(null); // Reset image
-      } else {
-        setMessage("❌ Upload failed.");
+      try {
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) successCount++;
+      } catch (error) {
+        console.error("Upload failed", error);
       }
-    } catch (error) {
-      setMessage("❌ Error ekak awa.");
+      // Calculate and update the upload percentage
+      setProgress(Math.round(((i + 1) / files.length) * 100));
     }
+
     setUploading(false);
+    setFiles([]); // Clear selected files after successful upload
+    setProgress(0);
+    alert(`Success! ${successCount}/${files.length} photos uploaded to Drive.`);
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6 justify-center">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Drive Uploader 📸</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
+      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
+        <h1 className="text-2xl font-bold mb-6 text-gray-800">Drive Uploader 📸</h1>
+        
+        {/* The 'multiple' attribute allows selecting multiple files at once */}
+        <input 
+          type="file" 
+          accept="image/*" 
+          multiple 
+          onChange={handleFileChange}
+          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-4 cursor-pointer"
+        />
 
-        {/* Camera Input Eka */}
-        <div className="mb-6">
-          <label className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg cursor-pointer shadow-md w-full block transition duration-300">
-            Open Camera & Take Photo
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment" /* Meken phone eke back camera eka open wenawa */
-              onChange={handleImageChange}
-              className="hidden"
-            />
-          </label>
-        </div>
-
-        {/* Image Preview */}
-        {image && (
-          <div className="mb-6">
-            <img
-              src={URL.createObjectURL(image)}
-              alt="Preview"
-              className="w-full h-64 object-cover rounded-lg border-2 border-gray-200"
-            />
-            <button
-              onClick={uploadToDrive}
-              disabled={uploading}
-              className={`mt-4 w-full text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-300 ${
-                uploading ? "bg-gray-400 cursor-not-allowed" : "bg-green-500 hover:bg-green-600"
-              }`}
-            >
-              {uploading ? "Uploading..." : "Save to Google Drive ☁️"}
-            </button>
-          </div>
+        {/* Display the number of selected photos */}
+        {files.length > 0 && (
+          <p className="mb-4 text-green-600 font-medium">
+            {files.length} photo(s) selected
+          </p>
         )}
 
-        {/* Success/Error Message */}
-        {message && <p className="mt-4 font-medium text-gray-700">{message}</p>}
+        <button
+          onClick={handleUpload}
+          disabled={uploading || files.length === 0}
+          className={`w-full py-3 rounded-lg text-white font-bold transition-all ${
+            uploading || files.length === 0 
+              ? "bg-gray-400 cursor-not-allowed" 
+              : "bg-blue-600 hover:bg-blue-700 shadow-md"
+          }`}
+        >
+          {uploading ? `Uploading... ${progress}%` : "Upload to Drive"}
+        </button>
       </div>
     </div>
   );
