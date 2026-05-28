@@ -6,20 +6,24 @@ export default function Home() {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // Function triggered when files are selected (allows both camera and gallery)
+  // අලුත් ෆොටෝස් තෝරද්දී කලින් තෝරපුවටම එකතු වීම
   const handleFileChange = (e) => {
     if (e.target.files) {
-      setFiles(Array.from(e.target.files));
+      setFiles((prevFiles) => [...prevFiles, ...Array.from(e.target.files)]);
     }
   };
 
-  // Function triggered when the Upload button is clicked
+  // තෝරපු ෆොටෝස් අයින් කරන්න
+  const clearFiles = () => {
+    setFiles([]);
+  };
+
+  // Upload කරන Function එක (කලින් විදිහටමයි)
   const handleUpload = async () => {
     if (files.length === 0) return;
     setUploading(true);
     let successCount = 0;
 
-    // Upload photos one by one to avoid Vercel's 4.5MB payload limit
     for (let i = 0; i < files.length; i++) {
       const formData = new FormData();
       formData.append("file", files[i]);
@@ -33,12 +37,11 @@ export default function Home() {
       } catch (error) {
         console.error("Upload failed", error);
       }
-      // Calculate and update the upload percentage
       setProgress(Math.round(((i + 1) / files.length) * 100));
     }
 
     setUploading(false);
-    setFiles([]); // Clear selected files after successful upload
+    setFiles([]); 
     setProgress(0);
     alert(`Success! ${successCount}/${files.length} photos uploaded to Drive.`);
   };
@@ -48,22 +51,49 @@ export default function Home() {
       <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
         <h1 className="text-2xl font-bold mb-6 text-gray-800">Drive Uploader 📸</h1>
         
-        {/* The 'multiple' attribute allows selecting multiple files at once */}
-        <input 
-          type="file" 
-          accept="image/*" 
-          multiple 
-          onChange={handleFileChange}
-          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-4 cursor-pointer"
-        />
+        {/* බට්න් දෙක (Camera සහ Gallery) */}
+        <div className="flex gap-4 mb-6">
+          {/* 1. Camera බට්න් එක (capture="environment" මගින් කෙලින්ම කැමරාව විවෘත වේ) */}
+          <label className="flex-1 cursor-pointer bg-blue-50 text-blue-700 py-3 px-4 rounded-lg font-semibold hover:bg-blue-100 transition-all border border-blue-200">
+            📸 Camera
+            <input 
+              type="file" 
+              accept="image/*" 
+              capture="environment" 
+              onChange={handleFileChange}
+              className="hidden" 
+            />
+          </label>
 
-        {/* Display the number of selected photos */}
+          {/* 2. Gallery බට්න් එක (multiple මගින් ෆොටෝස් කිහිපයක් තෝරාගත හැක) */}
+          <label className="flex-1 cursor-pointer bg-green-50 text-green-700 py-3 px-4 rounded-lg font-semibold hover:bg-green-100 transition-all border border-green-200">
+            🖼️ Gallery
+            <input 
+              type="file" 
+              accept="image/*" 
+              multiple 
+              onChange={handleFileChange}
+              className="hidden" 
+            />
+          </label>
+        </div>
+
+        {/* තෝරපු ෆොටෝස් ගාණ පෙන්වීම සහ Clear කිරීම */}
         {files.length > 0 && (
-          <p className="mb-4 text-green-600 font-medium">
-            {files.length} photo(s) selected
-          </p>
+          <div className="mb-6 bg-gray-100 p-3 rounded-lg flex justify-between items-center">
+            <p className="text-gray-700 font-medium text-sm">
+              Selected: <span className="font-bold">{files.length}</span> photos
+            </p>
+            <button 
+              onClick={clearFiles}
+              className="text-red-500 text-sm font-bold hover:text-red-700"
+            >
+              Clear ✖
+            </button>
+          </div>
         )}
 
+        {/* Upload බට්න් එක */}
         <button
           onClick={handleUpload}
           disabled={uploading || files.length === 0}
